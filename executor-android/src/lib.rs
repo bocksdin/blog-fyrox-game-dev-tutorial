@@ -1,9 +1,9 @@
 //! Android executor with your game connected to it as a plugin.
+use crowd_control::GameConstructor;
 use fyrox::{
     core::io, engine::executor::Executor, event_loop::EventLoopBuilder,
     platform::android::EventLoopBuilderExtAndroid,
 };
-use crowd_control::GameConstructor;
 
 #[no_mangle]
 fn android_main(app: fyrox::platform::android::activity::AndroidApp) {

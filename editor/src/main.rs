@@ -1,7 +1,7 @@
 //! Editor with your game connected to it as a plugin.
+use crowd_control::GameConstructor;
 use fyrox::event_loop::EventLoop;
 use fyroxed_base::{Editor, StartupData};
-use crowd_control::GameConstructor;
 
 fn main() {
     let event_loop = EventLoop::new().unwrap();
