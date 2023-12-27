@@ -8,11 +8,18 @@ use fyrox::{
 };
 use std::path::Path;
 
+mod player;
+use player::Player;
+
 pub struct GameConstructor;
 
 impl PluginConstructor for GameConstructor {
-    fn register(&self, _context: PluginRegistrationContext) {
+    fn register(&self, context: PluginRegistrationContext) {
         // Register your scripts here.
+        context
+            .serialization_context
+            .script_constructors
+            .add::<Player>("Player");
     }
 
     fn create_instance(&self, scene_path: Option<&str>, context: PluginContext) -> Box<dyn Plugin> {
