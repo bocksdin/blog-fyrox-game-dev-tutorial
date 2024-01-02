@@ -1,6 +1,6 @@
 use fyrox::{
     core::{
-        algebra::Vector2,
+        algebra::{Vector2, Vector3},
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
@@ -12,6 +12,8 @@ use fyrox::{
     scene::dim2::rigidbody::RigidBody,
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
 };
+
+use crate::constants::MAP_OFFSET;
 
 #[derive(Visit, Reflect, Default, Debug, Clone)]
 pub struct Player {
@@ -32,18 +34,25 @@ impl TypeUuidProvider for Player {
 impl ScriptTrait for Player {
     fn on_init(&mut self, context: &mut ScriptContext) {
         // Put initialization logic here.
+
+        // Set the position of the player to the center of the offset map
+        context.scene.graph[context.handle]
+            .cast_mut::<RigidBody>()
+            .unwrap()
+            .local_transform_mut()
+            .set_position(Vector3::new(MAP_OFFSET as f32, MAP_OFFSET as f32, 0.0));
     }
 
-    fn on_start(&mut self, context: &mut ScriptContext) {
+    fn on_start(&mut self, _context: &mut ScriptContext) {
         // There should be a logic that depends on other scripts in scene.
         // It is called right after **all** scripts were initialized.
     }
 
-    fn on_deinit(&mut self, context: &mut ScriptDeinitContext) {
+    fn on_deinit(&mut self, _context: &mut ScriptDeinitContext) {
         // Put de-initialization logic here.
     }
 
-    fn on_os_event(&mut self, event: &Event<()>, context: &mut ScriptContext) {
+    fn on_os_event(&mut self, event: &Event<()>, _context: &mut ScriptContext) {
         // Destructure the event object if the event is a WindowEvent
         if let Event::WindowEvent { event, .. } = event {
             // Destructure the WindowEvent if it is a KeyboardInput
