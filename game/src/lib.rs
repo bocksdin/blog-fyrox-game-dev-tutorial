@@ -66,11 +66,15 @@ impl Game {
         for x in MIN_MAP_XY - 1..=MAX_MAP_XY + 1 {
             for y in MIN_MAP_XY - 1..=MAX_MAP_XY + 1 {
                 // Determine x and y position of current tile
-                let (x, y) = ((x + MAP_OFFSET), (y + MAP_OFFSET));
+                let tile_position = ((x + MAP_OFFSET), (y + MAP_OFFSET));
 
                 // Build positional transform for tile
                 let rb_transform = TransformBuilder::new()
-                    .with_local_position(Vector3::new(x as f32, y as f32, 1.0))
+                    .with_local_position(Vector3::new(
+                        tile_position.0 as f32,
+                        tile_position.1 as f32,
+                        1.0,
+                    ))
                     .build();
 
                 // If the tile is a boundary, build a stone tile
@@ -124,7 +128,7 @@ impl Game {
                     RectangleBuilder::new(
                         BaseBuilder::new()
                             // Optional, set name of tile
-                            .with_name(format!("Tile ({}, {})", (x + MAP_OFFSET), (y + MAP_OFFSET)))
+                            .with_name(format!("Tile ({x}, {y})",))
                             // Set position of tile
                             .with_local_transform(rb_transform),
                     )
