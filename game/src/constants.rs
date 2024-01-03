@@ -1,4 +1,9 @@
-pub const MAP_SIZE: i32 = 100;
+// HEIGHT AND WIDTH
+pub const MAP_SIZE: i32 = 10;
+
+// COORDINATE OFFSET IN X AND Y DIRECTIONS
 pub const MAP_OFFSET: i32 = 1000;
+
+// MAXIMUM AND MINIMUM X AND Y VALUES
 pub const MAX_MAP_XY: i32 = MAP_SIZE / 2;
 pub const MIN_MAP_XY: i32 = -(MAP_SIZE / 2);
