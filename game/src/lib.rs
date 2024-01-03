@@ -1,5 +1,4 @@
 //! Game project.
-use constants::{MAP_OFFSET, MAX_MAP_XY, MIN_MAP_XY};
 use fyrox::{
     asset::manager::ResourceManager,
     core::{algebra::Vector3, math::Rect, pool::Handle},
@@ -23,6 +22,7 @@ use std::path::Path;
 
 mod constants;
 mod player;
+use constants::{MAP_OFFSET, MAX_MAP_XY, MIN_MAP_XY};
 use player::Player;
 
 pub struct GameConstructor;
@@ -77,8 +77,9 @@ impl Game {
                     ))
                     .build();
 
-                // If the tile is a boundary, build a stone tile
                 if x.abs() == MAX_MAP_XY + 1 || y.abs() == MAX_MAP_XY + 1 {
+                    // If the tile is a boundary, build a stone tile
+
                     // Build a 2D rigid body with a collider and a stone tile sprite
                     RigidBodyBuilder::new(
                         BaseBuilder::new()
