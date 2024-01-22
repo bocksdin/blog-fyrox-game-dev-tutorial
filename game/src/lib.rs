@@ -22,6 +22,7 @@ use std::path::Path;
 
 mod constants;
 mod player;
+mod types;
 use constants::{MAP_OFFSET, MAX_MAP_XY, MIN_MAP_XY};
 use player::Player;
 
