@@ -21,10 +21,10 @@ use fyrox::{
 use std::path::Path;
 
 mod constants;
-mod player;
+mod scripts;
 mod types;
 use constants::{MAP_OFFSET, MAX_MAP_XY, MIN_MAP_XY};
-use player::Player;
+use scripts::player::Player;
 
 pub struct GameConstructor;
 
