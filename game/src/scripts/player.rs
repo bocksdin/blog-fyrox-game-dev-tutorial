@@ -1,6 +1,8 @@
 use fyrox::{
     core::{
         algebra::{Vector2, Vector3},
+        color::Color,
+        pool::Handle,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
         visitor::prelude::*,
@@ -9,7 +11,12 @@ use fyrox::{
     event::{ElementState, Event, WindowEvent},
     impl_component_provider,
     keyboard::{KeyCode, PhysicalKey},
-    scene::dim2::rigidbody::RigidBody,
+    scene::{
+        base::BaseBuilder,
+        dim2::{rectangle::RectangleBuilder, rigidbody::RigidBody},
+        node::Node,
+        transform::TransformBuilder,
+    },
     script::{ScriptContext, ScriptDeinitContext, ScriptTrait},
 };
 
@@ -21,6 +28,12 @@ pub struct Player {
     move_right: bool,
     move_up: bool,
     move_down: bool,
+
+    // Health Bar
+    max_health: f32,
+    health: f32,
+    health_bar_background: Handle<Node>,
+    health_bar_progress: Handle<Node>,
 }
 
 impl_component_provider!(Player);
@@ -31,16 +44,94 @@ impl TypeUuidProvider for Player {
     }
 }
 
+impl Player {
+    pub const PLAYER_STARTING_HEALTH: f32 = 100.0;
+    pub const MAX_HEALTH_BAR_WIDTH: f32 = 1.0;
+
+    pub fn take_damage(&mut self, damage: &f32) {
+        self.health -= damage;
+    }
+}
+
 impl ScriptTrait for Player {
     fn on_init(&mut self, context: &mut ScriptContext) {
-        // Put initialization logic here.
-
         // Set the position of the player to the center of the offset map
         context.scene.graph[context.handle]
             .cast_mut::<RigidBody>()
             .unwrap()
             .local_transform_mut()
             .set_position(Vector3::new(MAP_OFFSET as f32, MAP_OFFSET as f32, 0.0));
+
+        // Create the healthbar background
+        let health_bar_background = RectangleBuilder::new(
+            BaseBuilder::new()
+                .with_name("HealthBarBackground")
+                .with_local_transform(
+                    TransformBuilder::new()
+                        // Resize the healthbar so it is wide and short
+                        .with_local_scale(Vector3::new(
+                            Self::MAX_HEALTH_BAR_WIDTH,
+                            Self::MAX_HEALTH_BAR_WIDTH / 4.,
+                            1.,
+                        ))
+                        // Move the pivot center to the top left of the healthbar
+                        // This is so it can be scaled from the left to the right
+                        .with_scaling_pivot(Vector3::new(
+                            Self::MAX_HEALTH_BAR_WIDTH / 2.,
+                            Self::MAX_HEALTH_BAR_WIDTH / 4.,
+                            1.,
+                        ))
+                        // Position the healthbar just above the player
+                        .with_local_position(Vector3::new(0., 0.75, 0.01))
+                        .build(),
+                ),
+        )
+        // Gray color
+        .with_color(Color::opaque(50, 50, 50))
+        .build(&mut context.scene.graph);
+
+        // Create the healthbar progress
+        let health_bar_progress = RectangleBuilder::new(
+            BaseBuilder::new()
+                .with_name("HealthBarProgress")
+                .with_local_transform(
+                    TransformBuilder::new()
+                        // Resize the healthbar so it is wide and short
+                        .with_local_scale(Vector3::new(
+                            Self::MAX_HEALTH_BAR_WIDTH,
+                            Self::MAX_HEALTH_BAR_WIDTH / 4.,
+                            1.,
+                        ))
+                        // Move the pivot center to the top left of the healthbar
+                        // This is so it can be scaled from the left to the right
+                        .with_scaling_pivot(Vector3::new(
+                            Self::MAX_HEALTH_BAR_WIDTH / 2.,
+                            Self::MAX_HEALTH_BAR_WIDTH / 4.,
+                            1.,
+                        ))
+                        // Position the healthbar just above the player, and just in front of the background
+                        .with_local_position(Vector3::new(0., 0.75, 0.))
+                        .build(),
+                ),
+        )
+        .with_color(Color::GREEN)
+        .build(&mut context.scene.graph);
+
+        // Make the healthbar background and progress child nodes of the player
+        context
+            .scene
+            .graph
+            .link_nodes(health_bar_background, context.handle);
+        context
+            .scene
+            .graph
+            .link_nodes(health_bar_progress, context.handle);
+
+        // Set the Player struct properties
+        self.max_health = Self::PLAYER_STARTING_HEALTH;
+        self.health = Self::PLAYER_STARTING_HEALTH;
+        self.health_bar_background = health_bar_background;
+        self.health_bar_progress = health_bar_progress;
     }
 
     fn on_start(&mut self, _context: &mut ScriptContext) {
@@ -90,6 +181,32 @@ impl ScriptTrait for Player {
 
             // Set the linear velocity of the rigid body based on the state of the player
             rigid_body.set_lin_vel(Vector2::new(x_speed, y_speed));
+        }
+
+        // Grab the healthbar progess node
+        let health_bar_progress = context.scene.graph[self.health_bar_progress].as_rectangle_mut();
+
+        // Grab the healthbar progess node's transform
+        let health_bar_transform = health_bar_progress.local_transform_mut();
+
+        // Grab the current scale of the healthbar progess node
+        let health_bar_scale = health_bar_transform.scale();
+
+        // Calculate the new scale of the healthbar progess node
+        // Don't let it go below 0 HP
+        let new_health = f32::max(
+            (self.health / self.max_health) * Self::MAX_HEALTH_BAR_WIDTH,
+            0.0,
+        );
+
+        // If the new scale is different from the current scale, update the scale
+        if health_bar_scale.x != new_health {
+            health_bar_transform.set_scale(Vector3::new(
+                new_health,
+                // Don't change the y or z scale
+                health_bar_scale.y,
+                health_bar_scale.z,
+            ));
         }
     }
 
