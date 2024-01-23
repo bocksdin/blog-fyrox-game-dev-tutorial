@@ -13,6 +13,7 @@ use fyrox::{
             collider::ColliderBuilder, rectangle::RectangleBuilder, rigidbody::RigidBodyBuilder,
         },
         graph::Graph,
+        node::Node,
         rigidbody::RigidBodyType,
         transform::TransformBuilder,
         Scene,
@@ -24,7 +25,7 @@ mod constants;
 mod scripts;
 mod types;
 use constants::{MAP_OFFSET, MAX_MAP_XY, MIN_MAP_XY};
-use scripts::player::Player;
+use scripts::{enemy::Enemy, enemy_spawner::EnemySpawner, player::Player};
 
 pub struct GameConstructor;
 
@@ -34,7 +35,8 @@ impl PluginConstructor for GameConstructor {
         context
             .serialization_context
             .script_constructors
-            .add::<Player>("Player");
+            .add::<Player>("Player")
+            .add::<Enemy>("Enemy");
     }
 
     fn create_instance(&self, scene_path: Option<&str>, context: PluginContext) -> Box<dyn Plugin> {
@@ -44,6 +46,7 @@ impl PluginConstructor for GameConstructor {
 
 pub struct Game {
     scene: Handle<Scene>,
+    enemy_spawners: Vec<Handle<Node>>,
 }
 
 impl Game {
@@ -54,6 +57,7 @@ impl Game {
 
         Self {
             scene: Handle::NONE,
+            enemy_spawners: Vec::new(),
         }
     }
 
@@ -147,6 +151,23 @@ impl Game {
             }
         }
     }
+
+    pub fn build_spawners(&mut self, graph: &mut Graph) {
+        let basic_enemy = EnemySpawner::new()
+            .with_spawn_rate(1.0)
+            .with_spawn_radius(5.0)
+            .with_enemy(
+                types::Enemy::new()
+                    .with_name("Basic Enemy")
+                    .with_speed(1.0)
+                    .with_scale(0.5)
+                    .with_attack_damage(1.0)
+                    .with_attack_speed(1.0),
+            )
+            .build(graph);
+
+        self.enemy_spawners.push(basic_enemy);
+    }
 }
 
 impl Plugin for Game {
@@ -186,5 +207,8 @@ impl Plugin for Game {
 
         // Build Tilemap
         self.build_tilemap(graph, resource_manager);
+
+        // Build Enemy Spawners
+        self.build_spawners(graph);
     }
 }
