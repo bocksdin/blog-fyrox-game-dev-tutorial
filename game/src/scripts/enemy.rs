@@ -15,8 +15,9 @@ use fyrox::{
         dim2::{
             collider::{Collider, ColliderBuilder, ColliderShape, CuboidShape},
             rectangle::RectangleBuilder,
-            rigidbody::RigidBodyBuilder,
+            rigidbody::{RigidBody, RigidBodyBuilder},
         },
+        graph::Graph,
         node::Node,
         transform::TransformBuilder,
     },
@@ -151,6 +152,50 @@ impl TypeUuidProvider for Enemy {
     }
 }
 
+impl Enemy {
+    fn move_towards_player(&mut self, graph: &mut Graph) {
+        // Borrow the graph mutably
+        let mut graph_ctx = graph.begin_multi_borrow::<2>();
+
+        // Get *this* node instance
+        let self_node = match graph_ctx.try_get(self.handle) {
+            Some(node) => node,
+            None => return,
+        };
+
+        // Get the player node
+        let player_node = match graph_ctx.try_get(self.player_handle) {
+            Some(node) => node,
+            None => return,
+        };
+
+        // Get the rigid bodies of *this* node and the player node
+        let self_rigid_body = match self_node.cast_mut::<RigidBody>() {
+            Some(rigid_body) => rigid_body,
+            None => return,
+        };
+        let player_rigid_body = match player_node.cast_mut::<RigidBody>() {
+            Some(rigid_body) => rigid_body,
+            None => return,
+        };
+
+        // Get the positions of *this* node and the player node
+        let player_position = player_rigid_body.local_transform().position();
+        let self_position = self_rigid_body.local_transform().position();
+
+        // Calculate the direction vector from *this* node to the player node
+        let dir_x = player_position.x - self_position.x;
+        let dir_y = player_position.y - self_position.y;
+
+        // Calculate the factor to scale the direction vector by
+        // to ensure the enemy moves at the speed we want
+        let factor = self.speed / (dir_x.powi(2) + dir_y.powi(2)).sqrt();
+
+        // Set the linear velocity of *this* node to the scaled direction vector
+        self_rigid_body.set_lin_vel(Vector2::new(dir_x * factor, dir_y * factor));
+    }
+}
+
 impl ScriptTrait for Enemy {
     fn on_init(&mut self, context: &mut ScriptContext) {
         // Put initialization logic here.
@@ -182,8 +227,8 @@ impl ScriptTrait for Enemy {
         // Respond to OS events here.
     }
 
-    fn on_update(&mut self, _context: &mut ScriptContext) {
-        // Put object logic here.
+    fn on_update(&mut self, context: &mut ScriptContext) {
+        self.move_towards_player(&mut context.scene.graph);
     }
 
     fn id(&self) -> Uuid {
