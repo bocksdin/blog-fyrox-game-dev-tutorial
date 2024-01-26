@@ -1,6 +1,6 @@
 use fyrox::{
     core::{
-        algebra::{Vector2, Vector3},
+        algebra::{Point2, Vector2, Vector3},
         pool::Handle,
         reflect::prelude::*,
         uuid::{uuid, Uuid},
@@ -14,6 +14,7 @@ use fyrox::{
         collider::{BitMask, InteractionGroups},
         dim2::{
             collider::{Collider, ColliderBuilder, ColliderShape, CuboidShape},
+            physics::{Intersection, RayCastOptions},
             rectangle::RectangleBuilder,
             rigidbody::{RigidBody, RigidBodyBuilder},
         },
@@ -23,6 +24,8 @@ use fyrox::{
     },
     script::{Script, ScriptContext, ScriptDeinitContext, ScriptTrait},
 };
+
+use super::Player;
 
 #[derive(Visit, Reflect, Default, Debug, Clone)]
 pub struct Enemy {
@@ -194,6 +197,57 @@ impl Enemy {
         // Set the linear velocity of *this* node to the scaled direction vector
         self_rigid_body.set_lin_vel(Vector2::new(dir_x * factor, dir_y * factor));
     }
+
+    fn attack_player(&mut self, graph: &mut Graph) {
+        // Get *this* node instance
+        let self_node = match graph.try_get(self.handle) {
+            Some(node) => node,
+            None => return,
+        };
+
+        // Get the player node
+        let player_node = match graph.try_get(self.player_handle) {
+            Some(node) => node,
+            None => return,
+        };
+
+        // Get the current position of *this* node and the player node
+        let self_position = self_node.global_position();
+        let player_position = player_node.global_position();
+
+        // Calculate the direction vector from *this* node to the player node
+        let direction = player_position - self_position;
+
+        // Cast a ray from *this* node in the direction of the player node
+        let mut buffer = Vec::<Intersection>::new();
+
+        graph.physics2d.cast_ray(
+            RayCastOptions {
+                ray_origin: Point2::new(self_position.x, self_position.y),
+                ray_direction: Vector2::new(direction.x, direction.y),
+                max_len: 1.,
+                groups: InteractionGroups::new(
+                    // Only collide with the player
+                    BitMask(0b1000_0000_0000_0000_0000_0000_0000_0000),
+                    BitMask(0b0111_1111_1111_1111_1111_1111_1111_1111),
+                ),
+                // Sort the results by distance
+                sort_results: true,
+            },
+            // Store the collisions in the vector
+            &mut buffer,
+        );
+
+        // If the ray hit the player, damage the player
+        if buffer.len() > 0 && buffer[0].collider == self.player_collider {
+            match graph.try_get_script_of_mut::<Player>(self.player_handle) {
+                Some(script) => {
+                    script.take_damage(&self.attack_damage);
+                }
+                None => {}
+            };
+        }
+    }
 }
 
 impl ScriptTrait for Enemy {
@@ -229,6 +283,12 @@ impl ScriptTrait for Enemy {
 
     fn on_update(&mut self, context: &mut ScriptContext) {
         self.move_towards_player(&mut context.scene.graph);
+
+        self.attack_timer += context.dt;
+        if self.attack_timer >= self.attack_speed {
+            self.attack_player(&mut context.scene.graph);
+            self.attack_timer = 0.0;
+        }
     }
 
     fn id(&self) -> Uuid {
